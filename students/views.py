@@ -1,3 +1,4 @@
+
 import logging
 
 from django.utils.decorators import method_decorator
@@ -12,29 +13,7 @@ from drf_yasg.utils import swagger_auto_schema
 
 logger = logging.getLogger('students')
 
-
 class StudentViewSet(viewsets.ModelViewSet):
-    """
-    retrieve:
-    Return the given student.
-
-    list:
-    Return a list of all students.
-
-    create:
-    Create a new student.
-
-    update:
-    Update an existing student.
-
-    partial_update:
-    Partially update an existing student.
-
-    destroy:
-    Delete a student.
-    """
-
-
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
     permission_classes = [IsAuthenticated]
@@ -42,6 +21,15 @@ class StudentViewSet(viewsets.ModelViewSet):
     filterset_fields = ['registration_date']
     search_fields = ['user__email', 'user__username']
     ordering_fields = ['registration_date', 'user__email']
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Student.objects.all()
+
+        user = self.request.user
+        if user.role == 'student':
+            return Student.objects.filter(user=user)
+        return Student.objects.all()
 
     def get_permissions(self):
         if self.action in ['retrieve', 'update']:
@@ -51,16 +39,6 @@ class StudentViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
-
-    def get_queryset(self):
-
-        if getattr(self, 'swagger_fake_view', False):
-            return Student.objects.all()
-
-        user = self.request.user
-        if user.role == 'student':
-            return Student.objects.filter(user=user)
-        return Student.objects.all()
 
     @method_decorator(cache_page(60 * 15, key_prefix='student_list'))
     @swagger_auto_schema(
@@ -77,4 +55,4 @@ class StudentViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         super().perform_update(serializer)
         student = serializer.instance
-        logger.info(f"Студент {student.user.email} обновил свой профиль")
+        logger.info(f"Student {student.user.email} updated their profile")

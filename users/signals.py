@@ -11,15 +11,13 @@ User = get_user_model()
 @receiver(post_save, sender=User)
 def log_user_created(sender, instance, created, **kwargs):
     if created:
-        logger.info(f"Новый пользователь зарегистрирован: {instance.email}")
+        logger.info(f"New user registered: {instance.email}")
         print(f"Signal fired for user creation: {instance.email}")
-
 
 @receiver(user_logged_in, sender=User)
 def log_user_login(sender, request, user, **kwargs):
-    logger.info(f"Пользователь вошел в систему: {user.email}")
-
+    logger.info(f"User logged in: {user.email}")
 
 @receiver(user_logged_out, sender=User)
 def log_user_logout(sender, request, user, **kwargs):
-    logger.info(f"Пользователь вышел из системы: {user.email}")
+    logger.info(f"User logged out: {user.email}")

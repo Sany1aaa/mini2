@@ -1,47 +1,60 @@
 from django.core import mail
 from django.test import TestCase
 from unittest.mock import patch
+from django.utils import timezone
 from users.models import CustomUser
 from courses.models import Course
 from grades.models import Grade
 from attendance.models import Attendance
 from students.models import Student
-from django.utils import timezone
-from notifications.tasks import (send_grade_update_notification, send_weekly_performance_email,
-                                 send_daily_report, send_daily_attendance_reminder)
+from notifications.tasks import (
+    send_grade_update_notification,
+    send_weekly_performance_email,
+    send_daily_report,
+    send_daily_attendance_reminder
+)
 
 
 class SendDailyAttendanceReminderTest(TestCase):
     def setUp(self):
-        self.student1 = CustomUser.objects.create_user(
+        """
+        Create test users for attendance reminder tests.
+        """
+        self.student_one = CustomUser.objects.create_user(
             email='student1@example.com',
-            username='student1',
+            username='student_one',
             password='password',
             role='student'
         )
-        self.student2 = CustomUser.objects.create_user(
+        self.student_two = CustomUser.objects.create_user(
             email='student2@example.com',
-            username='student2',
+            username='student_two',
             password='password',
             role='student'
         )
-        self.teacher = CustomUser.objects.create_user(
-            email='teacher@example.com',
-            username='teacher',
+        self.instructor = CustomUser.objects.create_user(
+            email='instructor@example.com',
+            username='instructor',
             password='password',
             role='teacher'
         )
 
     def test_send_daily_attendance_reminder(self):
+        """
+        Test that attendance reminder emails are sent only to students.
+        """
         send_daily_attendance_reminder()
 
+        # Check that emails are sent to the correct number of recipients
         self.assertEqual(len(mail.outbox), 2)
 
+        # Verify that emails are sent to students, not to the instructor
         recipients = [email.to[0] for email in mail.outbox]
         self.assertIn('student1@example.com', recipients)
         self.assertIn('student2@example.com', recipients)
-        self.assertNotIn('teacher@example.com', recipients)
+        self.assertNotIn('instructor@example.com', recipients)
 
+        # Verify email contents
         for email in mail.outbox:
             self.assertEqual(email.subject, 'Attendance Reminder')
             self.assertEqual(email.body, 'Please mark your attendance for today.')
@@ -50,21 +63,27 @@ class SendDailyAttendanceReminderTest(TestCase):
 
 class NotificationTasksTest(TestCase):
     def setUp(self):
-        self.teacher = CustomUser.objects.create_user(
-            email='teacher@example.com', username='teacher', password='password', role='teacher'
+        """
+        Create a test instructor for use in notification task tests.
+        """
+        self.instructor = CustomUser.objects.create_user(
+            email='instructor@example.com', username='instructor', password='password', role='teacher'
         )
 
     @patch('notifications.tasks.send_mail')
     def test_send_grade_update_notification(self, mock_send_mail):
+        """
+        Test that grade update notification emails are sent correctly.
+        """
         student_email = 'student@example.com'
-        course_name = 'Math'
-        grade_value = 'A'
+        course_title = 'Calculus'
+        new_grade = 'A'
 
-        send_grade_update_notification(student_email, course_name, grade_value)
+        send_grade_update_notification(student_email, course_title, new_grade)
 
         mock_send_mail.assert_called_once_with(
-            f'Обновление оценки по курсу {course_name}',
-            f'Ваша оценка по курсу {course_name} была обновлена до {grade_value}.',
+            f'Grade Update for {course_title}',
+            f'Your grade for the course {course_title} has been updated to {new_grade}.',
             'system@kbtu.kz',
             [student_email],
             fail_silently=False,
@@ -72,41 +91,42 @@ class NotificationTasksTest(TestCase):
 
     @patch('notifications.tasks.send_mail')
     def test_send_weekly_performance_email(self, mock_send_mail):
+        """
+        Test that weekly performance emails include the correct grades for students.
+        """
         student_user = CustomUser.objects.create_user(
             email='student@example.com', username='student', password='password', role='student'
         )
-        student = Student.objects.create(user=student_user)
-
-        course = Course.objects.create(name="Science", description="Science Course", instructor=self.teacher)
-
-        Grade.objects.create(student=student, course=course, grade='B', teacher_id=self.teacher.id)
+        student_record = Student.objects.create(user=student_user)
+        course_record = Course.objects.create(name="Physics", description="Physics Course", instructor=self.instructor)
+        Grade.objects.create(student=student_record, course=course_record, grade='B', teacher_id=self.instructor.id)
 
         send_weekly_performance_email()
 
         self.assertTrue(mock_send_mail.called)
         email_call_args = mock_send_mail.call_args[0]
-        self.assertIn('Ваши текущие оценки:', email_call_args[1])
-        self.assertIn('Science: B', email_call_args[1])
+        self.assertIn('Your current grades:', email_call_args[1])
+        self.assertIn('Physics: B', email_call_args[1])
 
     @patch('notifications.tasks.send_mail')
     def test_send_daily_report(self, mock_send_mail):
+        """
+        Test that daily report emails are sent to admins with the correct data.
+        """
         admin_user = CustomUser.objects.create_user(
             email='admin@example.com', username='admin', password='password', role='admin'
         )
         student_user = CustomUser.objects.create_user(
             email='student@example.com', username='student', password='password', role='student'
         )
-        student = Student.objects.create(user=student_user)
-
-        course = Course.objects.create(name="Math", description="Math Course", instructor=self.teacher)
-
-        Attendance.objects.create(student=student, course=course, date=timezone.now().date(), status='Present')
-
-        Grade.objects.create(student=student, course=course, grade='A', teacher_id=self.teacher.id)
+        student_record = Student.objects.create(user=student_user)
+        course_record = Course.objects.create(name="Calculus", description="Calculus Course", instructor=self.instructor)
+        Attendance.objects.create(student=student_record, course=course_record, date=timezone.now().date(), status='Present')
+        Grade.objects.create(student=student_record, course=course_record, grade='A', teacher_id=self.instructor.id)
 
         send_daily_report()
 
         self.assertTrue(mock_send_mail.called)
         email_call_args = mock_send_mail.call_args[0]
-        self.assertIn('Ежедневный отчет', email_call_args[0])
-        self.assertIn(admin_user.email, email_call_args[3])
+        self.assertIn('Daily Report', email_call_args[0])  # Subject check
+        self.assertIn(admin_user.email, email_call_args[3])  # Admin recipient check

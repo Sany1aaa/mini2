@@ -1,4 +1,3 @@
-from students.models import Student
 from rest_framework import viewsets, filters
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Grade
@@ -11,8 +10,6 @@ from rest_framework.pagination import PageNumberPagination
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 import logging
-
-logger = logging.getLogger('grades')
 
 class GradePagination(PageNumberPagination):
     page_size = 10
@@ -47,8 +44,8 @@ class GradeViewSet(viewsets.ModelViewSet):
 
         user = self.request.user
         if user.role == 'student':
-            student = Student.objects.get(user=user)
-            return Grade.objects.filter(student=student)
+            student_profile = Student.objects.get(user=user)
+            return Grade.objects.filter(student=student_profile)
         elif user.role == 'teacher':
             return Grade.objects.filter(teacher=user)
         return Grade.objects.all()
@@ -68,10 +65,6 @@ class GradeViewSet(viewsets.ModelViewSet):
     )
     @method_decorator(cache_page(60 * 15, key_prefix='grade_list'))
     def list(self, request, *args, **kwargs):
-        """
-        Returns a paginated list of grades.
-        Accessible to authenticated Admin and Teacher users.
-        """
         return super().list(request, *args, **kwargs)
 
     @swagger_auto_schema(
@@ -80,10 +73,6 @@ class GradeViewSet(viewsets.ModelViewSet):
     )
     @method_decorator(cache_page(60 * 15, key_prefix='grade_detail'))
     def retrieve(self, request, *args, **kwargs):
-        """
-        Retrieve a specific grade.
-        Accessible to students, teachers, and admins.
-        """
         return super().retrieve(request, *args, **kwargs)
 
     @swagger_auto_schema(
@@ -92,10 +81,6 @@ class GradeViewSet(viewsets.ModelViewSet):
         responses={201: GradeSerializer()}
     )
     def create(self, request, *args, **kwargs):
-        """
-        Create a new grade for a student.
-        Only accessible to authenticated teachers or admins.
-        """
         return super().create(request, *args, **kwargs)
 
     @swagger_auto_schema(
@@ -104,10 +89,6 @@ class GradeViewSet(viewsets.ModelViewSet):
         responses={200: GradeSerializer()}
     )
     def update(self, request, *args, **kwargs):
-        """
-        Update an existing grade.
-        Only accessible to authenticated teachers or admins.
-        """
         return super().update(request, *args, **kwargs)
 
     @swagger_auto_schema(
@@ -116,10 +97,6 @@ class GradeViewSet(viewsets.ModelViewSet):
         responses={200: GradeSerializer()}
     )
     def partial_update(self, request, *args, **kwargs):
-        """
-        Partially update an existing grade.
-        Only accessible to authenticated teachers or admins.
-        """
         return super().partial_update(request, *args, **kwargs)
 
     @swagger_auto_schema(
@@ -127,25 +104,21 @@ class GradeViewSet(viewsets.ModelViewSet):
         responses={204: 'No Content'}
     )
     def destroy(self, request, *args, **kwargs):
-        """
-        Delete a grade.
-        Only accessible to authenticated teachers or admins.
-        """
         return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         super().perform_create(serializer)
-        grade = serializer.instance
+        grade_entry = serializer.instance
         logger.info(
-            f"Преподаватель {self.request.user.email} выставил оценку {grade.grade} студенту {grade.student.user.email} по курсу {grade.course.name}")
+            f"Teacher {self.request.user.email} assigned grade {grade_entry.grade} to student {grade_entry.student.user.email} for course {grade_entry.course.name}")
 
     def perform_update(self, serializer):
         super().perform_update(serializer)
-        grade = serializer.instance
+        grade_entry = serializer.instance
         logger.info(
-            f"Преподаватель {self.request.user.email} обновил оценку студенту {grade.student.user.email} по курсу {grade.course.name} на {grade.grade}")
+            f"Teacher {self.request.user.email} updated grade for student {grade_entry.student.user.email} in course {grade_entry.course.name} to {grade_entry.grade}")
 
     def perform_destroy(self, instance):
         super().perform_destroy(instance)
         logger.info(
-            f"Преподаватель {self.request.user.email} удалил оценку студенту {instance.student.user.email} по курсу {instance.course.name}")
+            f"Teacher {self.request.user.email} deleted grade for student {instance.student.user.email} in course {instance.course.name}")

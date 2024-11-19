@@ -42,7 +42,6 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Attendance.objects.all()
-
         user = self.request.user
         if user.role == 'student':
             student = Student.objects.get(user=user)
@@ -55,50 +54,41 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         super().perform_create(serializer)
         attendance = serializer.instance
         logger.info(
-            f"Преподаватель {self.request.user.email} отметил посещаемость студента {attendance.student.user.email} по курсу {attendance.course.name} на дату {attendance.date} со статусом {attendance.status}")
+            f"Teacher {self.request.user.email} marked attendance for student {attendance.student.user.email} in course {attendance.course.name} on {attendance.date} with status {attendance.status}"
+        )
 
     def perform_update(self, serializer):
         super().perform_update(serializer)
         attendance = serializer.instance
         logger.info(
-            f"Преподаватель {self.request.user.email} обновил посещаемость студента {attendance.student.user.email} по курсу {attendance.course.name} на дату {attendance.date} со статусом {attendance.status}")
+            f"Teacher {self.request.user.email} updated attendance for student {attendance.student.user.email} in course {attendance.course.name} on {attendance.date} with status {attendance.status}"
+        )
 
     def perform_destroy(self, instance):
         super().perform_destroy(instance)
         logger.info(
-            f"Преподаватель {self.request.user.email} удалил запись посещаемости студента {instance.student.user.email} по курсу {instance.course.name} на дату {instance.date}")
+            f"Teacher {self.request.user.email} deleted attendance record for student {instance.student.user.email} in course {instance.course.name} on {instance.date}"
+        )
 
     @swagger_auto_schema(
-        operation_description="List all attendance records, with filtering, searching, and pagination.",
+        operation_description="Retrieve a list of attendance records with optional filters.",
         responses={200: AttendanceSerializer(many=True)},
         manual_parameters=[
             openapi.Parameter('page', openapi.IN_QUERY, description="Page number", type=openapi.TYPE_INTEGER),
-            openapi.Parameter('page_size', openapi.IN_QUERY, description="Number of results per page",
-                              type=openapi.TYPE_INTEGER),
-            openapi.Parameter('course__name', openapi.IN_QUERY, description="Filter by course name",
-                              type=openapi.TYPE_STRING),
-            openapi.Parameter('date', openapi.IN_QUERY, description="Filter by attendance date",
-                              type=openapi.FORMAT_DATE),
-            openapi.Parameter('status', openapi.IN_QUERY, description="Filter by attendance status",
-                              type=openapi.TYPE_STRING)
+            openapi.Parameter('page_size', openapi.IN_QUERY, description="Results per page", type=openapi.TYPE_INTEGER),
+            openapi.Parameter('course__name', openapi.IN_QUERY, description="Filter by course name", type=openapi.TYPE_STRING),
+            openapi.Parameter('date', openapi.IN_QUERY, description="Filter by date", type=openapi.FORMAT_DATE),
+            openapi.Parameter('status', openapi.IN_QUERY, description="Filter by status", type=openapi.TYPE_STRING)
         ]
     )
     def list(self, request, *args, **kwargs):
-        """
-        Returns a paginated list of all attendance records.
-        Only accessible to authenticated users with Admin or Teacher roles.
-        """
         return super().list(request, *args, **kwargs)
 
     @swagger_auto_schema(
-        operation_description="Retrieve details of a specific attendance record by its ID",
+        operation_description="Retrieve details of a specific attendance record by ID.",
         responses={200: AttendanceSerializer()}
     )
     def retrieve(self, request, *args, **kwargs):
-        """
-        Retrieve a specific attendance record.
-        Accessible to students, teachers, and admins.
-        """
         return super().retrieve(request, *args, **kwargs)
 
     @swagger_auto_schema(
@@ -107,22 +97,14 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         responses={201: AttendanceSerializer()}
     )
     def create(self, request, *args, **kwargs):
-        """
-        Create a new attendance record.
-        Only accessible to authenticated teachers or admins.
-        """
         return super().create(request, *args, **kwargs)
 
     @swagger_auto_schema(
-        operation_description="Update an existing attendance record.",
+        operation_description="Update an attendance record.",
         request_body=AttendanceSerializer,
         responses={200: AttendanceSerializer()}
     )
     def update(self, request, *args, **kwargs):
-        """
-        Update an existing attendance record.
-        Only accessible to authenticated teachers or admins.
-        """
         return super().update(request, *args, **kwargs)
 
     @swagger_auto_schema(
@@ -131,19 +113,11 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         responses={200: AttendanceSerializer()}
     )
     def partial_update(self, request, *args, **kwargs):
-        """
-        Partially update an attendance record.
-        Only accessible to authenticated teachers or admins.
-        """
         return super().partial_update(request, *args, **kwargs)
 
     @swagger_auto_schema(
-        operation_description="Delete an attendance record by its ID.",
+        operation_description="Delete an attendance record.",
         responses={204: 'No Content'}
     )
     def destroy(self, request, *args, **kwargs):
-        """
-        Delete a specific attendance record.
-        Only accessible to authenticated teachers or admins.
-        """
         return super().destroy(request, *args, **kwargs)

@@ -7,7 +7,7 @@ class CustomUser(AbstractUser):
         ('teacher', 'Teacher'),
         ('admin', 'Admin'),
     )
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    role = models.CharField(max_length=15, choices=ROLE_CHOICES)
     email = models.EmailField(unique=True)
 
     USERNAME_FIELD = 'email'

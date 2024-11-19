@@ -7,11 +7,19 @@ logger = logging.getLogger('grades')
 
 @receiver(post_save, sender=Grade)
 def log_grade_update(sender, instance, created, **kwargs):
+    """
+    Signal handler to log grade updates or creations.
+    """
     student_email = instance.student.user.email
     course_name = instance.course.name
     grade_value = instance.grade
     teacher_email = instance.teacher.email
+
     if created:
-        logger.info(f"Новая оценка: студент {student_email}, курс {course_name}, оценка {grade_value}, преподаватель {teacher_email}")
+        logger.info(
+            f"New grade assigned: Student {student_email}, Course {course_name}, Grade {grade_value}, Teacher {teacher_email}"
+        )
     else:
-        logger.info(f"Обновление оценки: студент {student_email}, курс {course_name}, новая оценка {grade_value}, преподаватель {teacher_email}")
+        logger.info(
+            f"Grade updated: Student {student_email}, Course {course_name}, Updated Grade {grade_value}, Teacher {teacher_email}"
+        )

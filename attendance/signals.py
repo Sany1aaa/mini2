@@ -11,7 +11,8 @@ def log_attendance_marking(sender, instance, created, **kwargs):
     course_name = instance.course.name
     date = instance.date
     status = instance.status
+
     if created:
-        logger.info(f"Посещаемость отмечена: студент {student_email}, курс {course_name}, дата {date}, статус {status}")
+        logger.info(f"Attendance marked: Student {student_email}, Course {course_name}, Date {date}, Status {status}.")
     else:
-        logger.info(f"Посещаемость обновлена: студент {student_email}, курс {course_name}, дата {date}, статус {status}")
+        logger.info(f"Attendance updated: Student {student_email}, Course {course_name}, Date {date}, Status {status}.")

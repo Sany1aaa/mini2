@@ -7,53 +7,64 @@ from students.models import Student
 from grades.models import Grade
 from attendance.models import Attendance
 
-
 @shared_task
 def send_daily_attendance_reminder():
+    """
+    Task to send a daily attendance reminder email to all students.
+    """
     students = CustomUser.objects.filter(role='student')
     for student in students:
         send_mail(
-            'Attendance Reminder',
-            'Please mark your attendance for today.',
-            'system@kbtu.kz',
-            [student.email],
+            subject='Attendance Reminder',
+            message='Please mark your attendance for today.',
+            from_email='system@kbtu.kz',
+            recipient_list=[student.email],
             fail_silently=False,
         )
 
 @shared_task
 def send_grade_update_notification(student_email, course_name, grade_value):
-    subject = f'Обновление оценки по курсу {course_name}'
-    message = f'Ваша оценка по курсу {course_name} была обновлена до {grade_value}.'
+    """
+    Task to send an email notification to a student about a grade update.
+    """
+    subject = f'Grade Update for {course_name}'
+    message = f'Your grade for the course {course_name} has been updated to {grade_value}.'
     from_email = 'system@kbtu.kz'
-    to_email = [student_email]
+    recipient_list = [student_email]
 
     send_mail(
         subject,
         message,
         from_email,
-        to_email,
+        recipient_list,
         fail_silently=False,
     )
 
 @shared_task
 def send_weekly_performance_email():
+    """
+    Task to send a weekly email to each student with their current grades.
+    """
     students = CustomUser.objects.filter(role='student')
     for student in students:
         grades = Grade.objects.filter(student__user=student)
-        message = 'Ваши текущие оценки:\n'
+        message = 'Your current grades:\n'
         for grade in grades:
             message += f'{grade.course.name}: {grade.grade}\n'
+        
         send_mail(
-            'Еженедельное обновление успеваемости',
-            message,
-            'system@kbtu.kz',
-            [student.email],
+            subject='Weekly Performance Update',
+            message=message,
+            from_email='system@kbtu.kz',
+            recipient_list=[student.email],
             fail_silently=False,
         )
 
-
 @shared_task
 def send_daily_report():
+    """
+    Task to send a daily report email to all admins with students' attendance and grades.
+    """
     today = timezone.now().date()
     students = Student.objects.all()
 
@@ -61,7 +72,7 @@ def send_daily_report():
 
     for student in students:
         attendance_records = Attendance.objects.filter(student=student, date=today)
-        attendance_status = attendance_records[0].status if attendance_records else 'Нет данных'
+        attendance_status = attendance_records[0].status if attendance_records else 'No data available'
 
         grades = Grade.objects.filter(student=student)
 
@@ -74,17 +85,17 @@ def send_daily_report():
 
         report_data.append(student_data)
 
-    subject = f'Ежедневный отчет за {today.strftime("%d.%m.%Y")}'
+    subject = f'Daily Report for {today.strftime("%d.%m.%Y")}'
     from_email = 'system@kbtu.kz'
-    to_emails = [admin.email for admin in CustomUser.objects.filter(role='admin')]
+    recipient_list = [admin.email for admin in CustomUser.objects.filter(role='admin')]
 
     message = render_to_string('daily_report_email.html', {'report_data': report_data, 'date': today})
 
     send_mail(
-        subject,
-        '',
-        from_email,
-        to_emails,
+        subject=subject,
+        message='',
+        from_email=from_email,
+        recipient_list=recipient_list,
         html_message=message,
         fail_silently=False,
     )

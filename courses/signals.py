@@ -10,4 +10,4 @@ def log_course_enrollment(sender, instance, created, **kwargs):
     if created:
         student_email = instance.student.user.email
         course_name = instance.course.name
-        logger.info(f"Студент {student_email} зачислен на курс {course_name}")
+        logger.info(f"Student {student_email} enrolled in the course {course_name}.")
